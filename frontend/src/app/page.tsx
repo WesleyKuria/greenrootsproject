@@ -1,36 +1,76 @@
-"use client";
+"use client"  // if you're using App Router
+
 import { useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from "recharts";
+import Papa from "papaparse";
+import {
+  LineChart,
+  Line,
+  CartesianGrid,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+interface NDVIData {
+  date: string;
+  ndvi: number;
+}
 
 export default function Home() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<NDVIData[]>([]);
 
   useEffect(() => {
-    fetch("/data/kilifi_ndvi_summary.csv")
-      .then((res) => res.text())
-      .then((csv) => {
-        const rows = csv.split("\n").slice(1); // skip header
-        const parsed = rows.map((row) => {
-          const [date, ndvi] = row.split(",");
-          return { date, ndvi: parseFloat(ndvi) };
-        });
+    Papa.parse("/data/ndvi_timeseries.csv", {
+      download: true,
+      header: true,
+      complete: (result) => {
+        const parsed = result.data
+          .filter((row: any) => row.date && row.ndvi)
+          .map((row: any) => ({
+            date: row.date,
+            ndvi: parseFloat(row.ndvi),
+          }));
         setData(parsed);
-      });
+      },
+    });
   }, []);
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Marina Dashboard</h1>
+    <main className="flex flex-col items-center justify-center min-h-screen p-8 space-y-12">
+      <h1 className="text-3xl font-bold">Kilifi NDVI Dashboard</h1>
 
-      {/* Earth Engine iframe */}
-      <div className="rounded-xl overflow-hidden shadow-lg mb-8">
-        <iframe
-          src='https://ee-marina-kilifi.projects.earthengine.app/view/kilifi-ndvi'
-          width="100%"
-          height="500"
-          style={{ border: "none" }}
-        />
+      {/* Earth Engine App iframe */}
+      <iframe
+        src="https://ee-marina-kilifi.projects.earthengine.app/view/kilifi-ndvi"
+        width="100%"
+        height="600"
+        className="rounded-xl shadow-lg"
+      />
+
+      {/* Chart Section */}
+      <div className="w-full max-w-4xl h-96">
+        <h2 className="text-2xl font-semibold mb-4">NDVI Time Series</h2>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" />
+            <YAxis domain={[0, 1]} />
+            <Tooltip />
+            <Line type="monotone" dataKey="ndvi" stroke="#2563eb" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
+
+      {/* Download link */}
+      <a
+        href="/data/ndvi_timeseries.csv"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 hover:underline"
+      >
+        Download NDVI Timeseries Data
+      </a>
     </main>
   );
 }
