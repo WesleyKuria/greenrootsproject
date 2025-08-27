@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Kilifi Mangrove Health Map</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/georaster"></script>
+  <script src="https://unpkg.com/georaster-layer-for-leaflet"></script>
+  <style>
+    body { margin:0; padding:0; }
+    #map { width:100%; height:100vh; }
+    .info-box {
+      position: absolute; top: 10px; left: 10px;
+      background: white; padding: 10px;
+      border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      font-family: sans-serif; font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="info-box">
+    <h3>Kilifi Mangrove Health (2020–2023)</h3>
+    <p>
+      <b>Green:</b> Healthy mangroves<br/>
+      <b>Red:</b> Unhealthy / stressed mangroves
+    </p>
+    <p>
+      Data source: <a href="https://globalmangrovewatch.org" target="_blank">Global Mangrove Watch</a><br/>
+      Satellite: Landsat 8/9 (USGS/NASA)<br/>
+      Analysis: Random Forest classification in Google Earth Engine
+    </p>
+  </div>
+
+  <script>
+    // Initialize map
+    var map = L.map('map').setView([-3.63, 39.84], 11);
+
+    // Basemap
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Load your GeoTIFF (place the .tif in your web server or GitHub Pages)
+    fetch("kilifi_mangrove_health.tif")
+      .then(response => response.arrayBuffer())
+      .then(arrayBuffer => {
+        parseGeoraster(arrayBuffer).then(georaster => {
+          var layer = new GeoRasterLayer({
+            georaster: georaster,
+            pixelValuesToColorFn: values => {
+              if (values[0] === 0) return "rgba(0,238,0,0.7)"; // healthy
+              if (values[0] === 1) return "rgba(255,0,0,0.7)"; // unhealthy
+              return null;
+            },
+            resolution: 64
+          });
+          layer.addTo(map);
+          map.fitBounds(layer.getBounds());
+        });
+      });
+  </script>
+</body>
+</html>
